@@ -12,7 +12,7 @@ if settings.get("sword.checkForUpdates") == nil then
     settings.save()
 end
 
-local version = "1.1.2"
+local version = "1.1.3"
 local buildVersion = '##VERSION'
 
 local running = true
@@ -57,6 +57,19 @@ local function updateTermSize()
     updateDocumentSize(WIDTH, HEIGHT)
 end
 
+local swordLockFn = ".swordsheath"
+local function wasExitUnsaved()
+    return fs.exists(swordLockFn)
+end
+local function markExitUnsaved()
+    if wasExitUnsaved() then
+        return
+    end
+    assert(fs.open(swordLockFn, "w")).close()
+end
+local function markExitSaved()
+    fs.delete(swordLockFn)
+end
 
 ---Mark document for re-render
 local function documentRenderUpdate()
@@ -66,6 +79,7 @@ end
 local function documentContentUpdate()
     documentUpdateRender = true
     documentUpdatedSinceSave = true
+    markExitUnsaved()
     documentUpdatedSinceSnapshot = true
 end
 
@@ -152,6 +166,7 @@ local function saveAsRaw(fn)
 end
 local function saveAs(fn)
     saveAsRaw(fn)
+    markExitSaved()
     documentUpdatedSinceSave = false
 end
 local saveAsButton = mbar.button("Save As", function(entry)
@@ -803,6 +818,7 @@ local function onEvent(e)
     end
 end
 
+local autosaveFn = ".autosave.sdoc"
 local function mainLoop()
     render()
     if settings.get("sword.checkForUpdates") then
@@ -810,6 +826,13 @@ local function mainLoop()
     end
     if args[1] then
         openDocument(args[1])
+    elseif wasExitUnsaved() then
+        local result = mbar.popup("Unsaved Document", "Sword did not save the last time it was open, open the autosave?",
+            { "No", "Yes" }, 20)
+        if result == 2 then
+            openDocument(autosaveFn)
+        end
+        markExitSaved()
     end
     while running do
         render()
@@ -828,7 +851,7 @@ local function undoTimer()
             if documentUpdatedSinceSnapshot then
                 documentUpdatedSinceSnapshot = false
                 table.insert(undoStates, 1, { state = documentString, cursor = cursor })
-                saveAsRaw(".autosave.sdoc")
+                saveAsRaw(autosaveFn)
                 undoStates[10] = nil
             end
             tid = os.startTimer(1)
