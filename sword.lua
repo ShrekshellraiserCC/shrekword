@@ -57,7 +57,7 @@ local function updateTermSize()
     updateDocumentSize(WIDTH, HEIGHT)
 end
 
-local swordLockFn = ".swordsheath"
+local swordLockFn = ".swordunsheathed"
 local function wasExitUnsaved()
     return fs.exists(swordLockFn)
 end
