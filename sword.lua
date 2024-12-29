@@ -12,8 +12,10 @@ if settings.get("sword.checkForUpdates") == nil then
     settings.save()
 end
 
-local version = "1.1.2"
+local version = "1.2.0"
 local buildVersion = '##VERSION'
+local shebang = "#!sword.lua\n"
+
 
 local running = true
 
@@ -32,6 +34,7 @@ local document
 local documentUpdateRender = false
 local documentUpdatedSinceSnapshot = false
 local documentUpdatedSinceSave = false
+local documentHasShebang = false
 local bar
 local clipboard = ""
 local copy, paste
@@ -83,8 +86,9 @@ local function openDocument(fn)
     local f = assert(fs.open(fn, "r"))
     local s = f.readAll()
     f.close()
-    local ok, err = pcall(sdoc.decode, s)
+    local ok, err, hasShebang = pcall(sdoc.decode, s)
     if ok then
+        documentHasShebang = hasShebang
         documentString = s
         document = err
         documentFilename = fn
@@ -145,23 +149,33 @@ local openButton = mbar.button("Open", function(entry)
         openDocument(fn)
     end
 end)
-local function saveAsRaw(fn)
+local function saveAsRaw(fn,includeShebang)
     local f = assert(fs.open(fn, "w"))
+    if includeShebang then
+        f.write(shebang)
+    end
     f.write(documentString)
     f.close()
 end
-local function saveAs(fn)
-    saveAsRaw(fn)
+local function saveAs(fn,includeShebang)
+    saveAsRaw(fn,includeShebang)
     documentUpdatedSinceSave = false
 end
 local saveAsButton = mbar.button("Save As", function(entry)
     local fn = mbar.popupRead("Save As", 15)
+    local includeShebang = mbar.popup("Shebang","Including a Shebang will assign the file to open in Shrekword, but it can only be opened in versions >= 1.2.0",{"Yes","No"},64)
+    if includeShebang == 1 then -- If the user requested a Shebang
+        includeShebang = true
+    else
+        includeShebang = false --Convert Yes/No indexes to booleans
+    end
     bar.resetKeys()
     if fn then
         if fn:sub(-5) ~= ".sdoc" then
             fn = fn .. ".sdoc"
         end
-        saveAs(fn)
+        saveAs(fn,includeShebang)
+        documentHasShebang = includeShebang
         documentFilename = fn
     end
 end)
@@ -169,7 +183,7 @@ local saveButton = mbar.button("Save", function(entry)
     if not documentFilename then
         saveAsButton.click()
     else
-        saveAs(documentFilename)
+        saveAs(documentFilename,documentHasShebang)
     end
 end)
 local newButton = mbar.button("New", newDocument)
