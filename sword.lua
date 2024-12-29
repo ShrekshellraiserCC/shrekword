@@ -86,8 +86,9 @@ local function openDocument(fn)
     local f = assert(fs.open(fn, "r"))
     local s = f.readAll()
     f.close()
-    local ok, err = pcall(sdoc.decode, s)
+    local ok, err, hasShebang = pcall(sdoc.decode, s)
     if ok then
+        documentHasShebang = hasShebang
         documentString = s
         document = err
         documentFilename = fn

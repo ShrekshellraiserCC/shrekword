@@ -300,7 +300,7 @@ end
 ---@param str string
 ---@return Document
 function sdoc.decode(str)
-    local str, w, h = decodeHeader(str)
+    local str, w, h, hasShebang = decodeHeader(str)
     local s, m = sdoc.wrapString(str, w)
     ---@class Document
     local doc = {
@@ -434,7 +434,7 @@ function sdoc.decode(str)
 
     doc.blit = sdoc.render(doc)
 
-    return setmetatable(doc, docmeta)
+    return setmetatable(doc, docmeta),hasShebang
 end
 
 ---@param doc Document
